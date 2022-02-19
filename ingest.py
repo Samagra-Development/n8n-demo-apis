@@ -2,6 +2,7 @@ import json
 import pandas as pd
 import requests
 import psycopg2
+import sys
 
 
 def get_connection():
@@ -34,7 +35,7 @@ def insert_data():
     cursor = connection.cursor()
         
     # for AH&VS
-    df = pd.read_csv(r'<path_to_file>/AH&VS.csv',encoding='utf-8',skiprows = 1, header=None)
+    df = pd.read_csv(r'/root/data/n8n-demo-apis/AH&VS.csv',encoding='utf-8',skiprows = 1, header=None)
     df = df.values.tolist()
     for d in df:
         print("######################################################################")
@@ -52,24 +53,42 @@ def insert_data():
         print("######################################################################")
 
     # for Fishery
-    df = pd.read_csv(r'<path_to_file>/fisheries.csv',encoding='utf-8',skiprows = 1, header=None)
+    df = pd.read_csv(r'/root/data/n8n-demo-apis/fisheries.csv',encoding='utf-8',skiprows = 1, header=None)
     df = df.values.tolist()
     for d in df:
         print("######################################################################")
-        cursor.execute(query_users, (d[5], d[4],"Fisheries"))
-        cursor.execute(query_location, ("Block", d[1], d[2], None, None))
-        cursor.execute(query_location, ("Block", d[1], d[3], None, None))
+        cursor.execute(query_users, (d[7], d[6],"Fisheries"))
+        user_id = cursor.fetchone()[0]
+        if not pd.isnull(d[2]):
+            cursor.execute(query_location, ("Block", d[1], d[2], None, None))
+            location_id = cursor.fetchone()[0]
+            cursor.execute(user_location_query, (user_id, location_id))
+        if not pd.isnull(d[3]):
+            cursor.execute(query_location, ("Block", d[1], d[3], None, None))
+            location_id = cursor.fetchone()[0]
+            cursor.execute(user_location_query, (user_id, location_id))
+        if not pd.isnull(d[4]):
+            cursor.execute(query_location, ("Block", d[1], d[3], None, None))
+            location_id = cursor.fetchone()[0]
+            cursor.execute(user_location_query, (user_id, location_id))
+        if not pd.isnull(d[5]):
+            cursor.execute(query_location, ("Block", d[1], d[3], None, None))
+            location_id = cursor.fetchone()[0]
+            cursor.execute(user_location_query, (user_id, location_id))
         connection.commit()
         print("######################################################################")
         
     # for FARD
-    df = pd.read_csv(r'<path_to_file>/fard.csv',encoding='utf-8',skiprows = 1, header=None)
+    df = pd.read_csv(r'/root/data/n8n-demo-apis/fard.csv',encoding='utf-8',skiprows = 1, header=None)
     df = df.values.tolist()
     for d in df:
         print("######################################################################")
-        cursor.execute(query_users, (d[5], d[4],"FARD"))
-        cursor.execute(query_location, ("Block", d[1], d[2], None, None))
-        cursor.execute(query_location, ("Block", d[1], d[3], None, None))
+        cursor.execute(query_users, (d[4], d[3],"FARD"))
+        user_id = cursor.fetchone()[0]
+        if not pd.isnull(d[2]):
+            cursor.execute(query_location, ("Block", d[1], d[2], None, None))
+            location_id = cursor.fetchone()[0]
+            cursor.execute(user_location_query, (user_id, location_id))
         connection.commit()
         print("######################################################################")
 
@@ -79,9 +98,7 @@ def insert_data():
     Content-Type application/json
     X-Hasura-Role admin
     x-hasura-admin-secret <admin-secret>
-
 ** For Location table
-
 {
     "type": "run_sql",
     "args": {
@@ -89,20 +106,15 @@ def insert_data():
         "sql": "CREATE TABLE IF NOT EXISTS location (id serial NOT NULL PRIMARY KEY, type varchar(50) NULL, parent varchar(50) NULL, name varchar(50) NULL, latitude varchar(50) NULL, longitude varchar(50) NULL);"
     }
 }
-
 ** For Users table
-
 {
     "type": "run_sql",
     "args": {
         "source": "default",
-        "sql": "CREATE TABLE IF NOT EXISTS users (id serial NOT NULL PRIMARY KEY, phone varchar(50) NULL, name varchar(50) NULL, department varchar(50) NULL);"
+        "sql": "CREATE TABLE IF NOT EXISTS users (id serial NOT NULL PRIMARY KEY, phone varchar(50) NULL, name varchar(255) NULL, department varchar(50) NULL);"
     }
 }
-
-
 ** For Relation Table
-
 {
     "type": "run_sql",
     "args": {
@@ -111,3 +123,7 @@ def insert_data():
     }
 }
 """
+
+
+if __name__ == '__main__':
+    globals()[sys.argv[1]]()
